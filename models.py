@@ -10,21 +10,21 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(60))
 
 # TODO: Complete Portfolio Per User
-class Portfolio(Base):
-    __tablename__ = "portfolios"
-    pass
+#class Portfolio(Base):
+#    __tablename__ = "portfolios"
+#    pass
 
 # TODO: Complete Holding/s Per Portfolio
-class Holding(Base):
-    __tablename__ = "holdings"
-    pass
+#class Holding(Base):
+#    __tablename__ = "holdings"
+#    pass
 
 # TODO: Complete Price Alert Notification // Notify When Certain Price
-class PriceAlert(Base):
-    __tablename__ = "price_alerts"
-    pass
+#class PriceAlert(Base):
+#    __tablename__ = "price_alerts"
+#    pass
 
 # TODO: Show Price History Over ? Figure Out Duration
-class PriceHistory(Base):
-    __tablename__ = "price_histories"
-    pass
+#class PriceHistory(Base):
+#    __tablename__ = "price_histories"
+#    pass

@@ -7,13 +7,14 @@ class Base(DeclarativeBase):
     pass
 
 load_dotenv()
-engine = create_engine(os.getenv("DATABASE_URL"))
+DATABASE_URL = os.environ["DATABASE_URL"]
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 def get_db():
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         yield db
-        
+        #endpoint runs
     finally:
         db.close()
