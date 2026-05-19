@@ -1,17 +1,20 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+from database import get_db
 from models import User, Portfolio
 from schemas import PortfolioCreate, PortfolioResponse
 from security import get_current_user
-from database import get_db
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
+
 
 @router.get("/", response_model=list[PortfolioResponse])
 def list_portfolios(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     portfolios = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).all()
     return portfolios
+
 
 @router.get("/{portfolio_id}", response_model=PortfolioResponse)
 def get_portfolio(portfolio_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -20,6 +23,7 @@ def get_portfolio(portfolio_id: int, current_user: User = Depends(get_current_us
     if not portfolio:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
     return portfolio
+
 
 @router.post("/", response_model=PortfolioResponse, status_code=status.HTTP_201_CREATED)
 def create_portfolio(portfolio: PortfolioCreate, current_user: User = Depends(get_current_user),
@@ -49,6 +53,7 @@ def create_portfolio(portfolio: PortfolioCreate, current_user: User = Depends(ge
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Portfolio name already exists")
     return new_portfolio
 
+
 @router.put("/{portfolio_id}", response_model=PortfolioResponse)
 def update_portfolio(portfolio_id: int, new_portfolio: PortfolioCreate, current_user: User = Depends(get_current_user),
                      db: Session = Depends(get_db)):
@@ -65,6 +70,7 @@ def update_portfolio(portfolio_id: int, new_portfolio: PortfolioCreate, current_
                                            Portfolio.user_id == current_user.id).first()
     if not portfolio:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+
     portfolio.name = new_portfolio.name
     try:
         db.commit()
@@ -73,6 +79,7 @@ def update_portfolio(portfolio_id: int, new_portfolio: PortfolioCreate, current_
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Portfolio name already exists")
     return portfolio
+
 
 @router.delete("/{portfolio_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_portfolio(portfolio_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
