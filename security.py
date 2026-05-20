@@ -18,7 +18,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
-def create_access_token(data: dict):
+def create_access_token(data: dict) -> str:
     payload = data.copy()
     expiration_time = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload["exp"] = expiration_time
@@ -26,18 +26,18 @@ def create_access_token(data: dict):
 
 
 # Decode to save as string / Salt auto embeds and extracts
-def hash_password(password: str):
+def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 # Compares bytes
-def verify_password(password: str, hashed_password: str):
+def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed_password.encode())
 
 
 # Verify signature, expiration, and return user
 def get_current_user(auth: HTTPAuthorizationCredentials = Depends(security),
-                     db: Session = Depends(get_db)):
+                     db: Session = Depends(get_db)) -> User:
     token = auth.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])

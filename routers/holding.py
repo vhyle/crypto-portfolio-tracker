@@ -6,6 +6,7 @@ from database import get_db
 from models import User, Portfolio, Holding
 from schemas import HoldingCreate, HoldingUpdate, HoldingResponse
 from security import get_current_user
+from services import validate_coin
 
 router = APIRouter(prefix="/portfolios/{portfolio_id}/holdings", tags=["holdings"])
 
@@ -31,7 +32,9 @@ def get_holding(portfolio_id: int, holding_id: int, current_user: User = Depends
 @router.post("/", response_model=HoldingResponse, status_code=status.HTTP_201_CREATED)
 def create_holding(portfolio_id: int, holding: HoldingCreate, current_user: User = Depends(get_current_user),
                    db: Session = Depends(get_db)):
-    ## TODO: ADD COIN VERIFICATION
+    # Check if coin is valid
+    if not validate_coin(holding.coin_name):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid coin")
 
     # Verify portfolio belongs to user
     portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id,
@@ -39,17 +42,17 @@ def create_holding(portfolio_id: int, holding: HoldingCreate, current_user: User
     if not portfolio:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
 
-    # Reject duplicate coins holding in the same portfolio
-    existing_coin = db.query(Holding).filter(Holding.portfolio_id == portfolio_id,
+    # Reject duplicate holding in the same portfolio
+    existing_holding = db.query(Holding).filter(Holding.portfolio_id == portfolio_id,
                                              Holding.coin_name == holding.coin_name).first()
-    if existing_coin:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Coin already exists")
+    if existing_holding:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Holding already exists")
 
     # Reject if greater than 25 holdings per portfolio
     holding_count = db.query(Holding).filter(Holding.portfolio_id == portfolio_id).count()
     if holding_count >= 25:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="User has the maximum amount of coins per portfolio (25)")
+                            detail="User has the maximum amount of holding per portfolio (25)")
 
     new_holding = Holding(
         coin_name=holding.coin_name,
@@ -63,7 +66,7 @@ def create_holding(portfolio_id: int, holding: HoldingCreate, current_user: User
         db.refresh(new_holding)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Coin already exists")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Holding already exists")
     return new_holding
 
 
