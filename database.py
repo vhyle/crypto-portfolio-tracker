@@ -19,6 +19,6 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
-        # endpoint runs
+        # Endpoint runs
     finally:
         db.close()
