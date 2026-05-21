@@ -15,8 +15,8 @@ async def refresh_prices_loop():
         except Exception as e:
             print(f"Something went wrong refreshing price: {e}")
 
-        # Safeguard runs every 60 seconds, 120 seconds TTL
-        await asyncio.sleep(60)
+        # Safeguard runs every 90 seconds, 180 seconds TTL
+        await asyncio.sleep(90)
 
 
 async def refresh_prices():
@@ -33,7 +33,7 @@ async def refresh_prices():
         prices = await fetch_prices_batch(coin_names)
 
         for coin, price in prices.items():
-            await async_redis.set(f"coingecko:price:{coin}", price, ex=120)
+            await async_redis.set(f"coingecko:price:{coin}", price, ex=180)
 
 
 async def refresh_valid_coins_loop():

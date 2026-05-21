@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Sync client for sync code (CRUD endpoints)
 sync_redis = redis.Redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
 
-# For background tasks and websockets
+# Async client for async code (background tasks, WebSocket)
 async_redis = aioredis.from_url(os.environ["REDIS_URL"], decode_responses=True)

@@ -63,3 +63,6 @@ class HoldingResponse(BaseModel):
     amount: Decimal
     buy_price: Decimal
     portfolio_id: int
+    current_price: Decimal
+    current_value: Decimal
+    profit_loss_percent: Decimal
