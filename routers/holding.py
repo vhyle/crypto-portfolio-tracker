@@ -1,9 +1,10 @@
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, status, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, Portfolio, Holding
+from rate_limit import limiter
 from schemas import HoldingCreate, HoldingUpdate, HoldingResponse
 from security import get_current_user
 from services import validate_coin, calculate_holding_price, cache_price
@@ -30,8 +31,9 @@ def get_holding(portfolio_id: int, holding_id: int, current_user: User = Depends
 
 
 @router.post("/", response_model=HoldingResponse, status_code=status.HTTP_201_CREATED)
-def create_holding(portfolio_id: int, holding: HoldingCreate, current_user: User = Depends(get_current_user),
-                   db: Session = Depends(get_db)):
+@limiter.limit("15 per minute")
+def create_holding(request: Request, portfolio_id: int, holding: HoldingCreate,
+                   current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Check if coin is valid
     if not validate_coin(holding.coin_name):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid coin")
@@ -74,7 +76,8 @@ def create_holding(portfolio_id: int, holding: HoldingCreate, current_user: User
 
 
 @router.put("/{holding_id}", response_model=HoldingResponse)
-def update_holding(portfolio_id: int, holding_id: int, new_holding: HoldingUpdate,
+@limiter.limit("15 per minute")
+def update_holding(request: Request, portfolio_id: int, holding_id: int, new_holding: HoldingUpdate,
                    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     holding = db.query(Holding).join(Portfolio).filter(Holding.id == holding_id,
                                                        Holding.portfolio_id == portfolio_id,
@@ -90,8 +93,9 @@ def update_holding(portfolio_id: int, holding_id: int, new_holding: HoldingUpdat
 
 
 @router.delete("/{holding_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_holding(portfolio_id: int, holding_id: int, current_user: User = Depends(get_current_user),
-                   db: Session = Depends(get_db)):
+@limiter.limit("15 per minute")
+def delete_holding(request: Request, portfolio_id: int, holding_id: int,
+                   current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     holding = db.query(Holding).join(Portfolio).filter(Holding.id == holding_id,
                                                        Holding.portfolio_id == portfolio_id,
                                                        Portfolio.user_id == current_user.id).first()

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, status, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, Portfolio
+from rate_limit import limiter
 from schemas import PortfolioCreate, PortfolioResponse
 from security import get_current_user
 
@@ -26,7 +27,8 @@ def get_portfolio(portfolio_id: int, current_user: User = Depends(get_current_us
 
 
 @router.post("/", response_model=PortfolioResponse, status_code=status.HTTP_201_CREATED)
-def create_portfolio(portfolio: PortfolioCreate, current_user: User = Depends(get_current_user),
+@limiter.limit("10 per minute")
+def create_portfolio(request: Request, portfolio: PortfolioCreate, current_user: User = Depends(get_current_user),
                      db: Session = Depends(get_db)):
     # Reject if user has duplicate portfolio name
     existing_portfolio = db.query(Portfolio).filter(Portfolio.user_id == current_user.id,
@@ -55,8 +57,9 @@ def create_portfolio(portfolio: PortfolioCreate, current_user: User = Depends(ge
 
 
 @router.put("/{portfolio_id}", response_model=PortfolioResponse)
-def update_portfolio(portfolio_id: int, new_portfolio: PortfolioCreate, current_user: User = Depends(get_current_user),
-                     db: Session = Depends(get_db)):
+@limiter.limit("10 per minute")
+def update_portfolio(request: Request, portfolio_id: int, new_portfolio: PortfolioCreate,
+                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Reject if user has duplicate portfolio name
     existing_portfolio = db.query(Portfolio).filter(Portfolio.user_id == current_user.id,
                                                     Portfolio.name == new_portfolio.name,
@@ -82,7 +85,9 @@ def update_portfolio(portfolio_id: int, new_portfolio: PortfolioCreate, current_
 
 
 @router.delete("/{portfolio_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_portfolio(portfolio_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@limiter.limit("10 per minute")
+def delete_portfolio(request: Request, portfolio_id: int, current_user: User = Depends(get_current_user),
+                     db: Session = Depends(get_db)):
     portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id,
                                            Portfolio.user_id == current_user.id).first()
     if not portfolio:

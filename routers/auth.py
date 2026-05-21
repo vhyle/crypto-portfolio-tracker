@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
+from rate_limit import limiter
 from schemas import UserCreate, UserLogin, UserResponse, Token
 from security import create_access_token, hash_password, verify_password
 
@@ -11,7 +12,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("8 per minute")
+def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     # Reject if username exists
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
@@ -33,7 +35,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(user: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("8 per minute")
+def login(request: Request, user: UserLogin, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.username == user.username).first()
     if not existing_user or not verify_password(user.password, existing_user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")

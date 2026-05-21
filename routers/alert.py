@@ -1,8 +1,9 @@
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, status, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, PriceAlert
+from rate_limit import limiter
 from schemas import PriceAlertCreate, PriceAlertUpdate, PriceAlertResponse
 from security import get_current_user
 from services import validate_coin, cache_price
@@ -26,7 +27,8 @@ def get_alert(alert_id: int, current_user: User = Depends(get_current_user), db:
 
 
 @router.post("/", response_model=PriceAlertResponse, status_code=status.HTTP_201_CREATED)
-def create_alert(alert: PriceAlertCreate, current_user: User = Depends(get_current_user),
+@limiter.limit("20 per minute")
+def create_alert(request: Request, alert: PriceAlertCreate, current_user: User = Depends(get_current_user),
                  db: Session = Depends(get_db)):
     # Check if coin is valid
     if not validate_coin(alert.coin_name):
@@ -55,8 +57,9 @@ def create_alert(alert: PriceAlertCreate, current_user: User = Depends(get_curre
 
 
 @router.put("/{alert_id}", response_model=PriceAlertResponse)
-def update_alert(alert_id: int, new_alert: PriceAlertUpdate, current_user: User = Depends(get_current_user),
-                 db: Session = Depends(get_db)):
+@limiter.limit("20 per minute")
+def update_alert(request: Request, alert_id: int, new_alert: PriceAlertUpdate,
+                 current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     alert = db.query(PriceAlert).filter(PriceAlert.id == alert_id,
                                         PriceAlert.user_id == current_user.id).first()
     if not alert:
@@ -70,7 +73,9 @@ def update_alert(alert_id: int, new_alert: PriceAlertUpdate, current_user: User 
 
 
 @router.delete("/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_alert(alert_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@limiter.limit("20 per minute")
+def delete_alert(request: Request, alert_id: int, current_user: User = Depends(get_current_user),
+                 db: Session = Depends(get_db)):
     alert = db.query(PriceAlert).filter(PriceAlert.id == alert_id,
                                         PriceAlert.user_id == current_user.id).first()
     if not alert:

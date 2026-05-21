@@ -2,10 +2,13 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from models import User, Portfolio, Holding, PriceAlert, PriceHistory
 from background import refresh_prices_loop, refresh_valid_coins_loop, save_price_history_loop
 from database import engine, Base
+from rate_limit import limiter
 from routers import auth, portfolio, holding, alert, history
 
 # Drop tables
@@ -32,6 +35,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth.router)
 app.include_router(portfolio.router)
