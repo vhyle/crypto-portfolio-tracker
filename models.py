@@ -1,6 +1,7 @@
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric
+from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -51,7 +52,10 @@ class PriceAlert(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
 
-# TODO: Show Price History Over ? Figure Out Duration
-# class PriceHistory(Base):
-#    __tablename__ = "price_histories"
-#    pass
+class PriceHistory(Base):
+    __tablename__ = "price_histories"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    coin_name: Mapped[str] = mapped_column(String(60), index=True)
+    price: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=8))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, index=True)

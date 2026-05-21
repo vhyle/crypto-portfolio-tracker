@@ -1,10 +1,12 @@
 import asyncio
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal
 
 import httpx
 
 from cache import async_redis
 from database import SessionLocal
-from models import Holding
+from models import Holding, PriceAlert, PriceHistory
 from services import fetch_prices_batch
 
 
@@ -21,12 +23,13 @@ async def refresh_prices_loop():
 
 async def refresh_prices():
     with SessionLocal() as db:
-        # Get all unique coin names from all user holdings
-        coins = db.query(Holding.coin_name).distinct().all()
+        # Get all coins that need prices - held and alerts
+        held_coins = db.query(Holding.coin_name).distinct().all()
+        alert_coins = db.query(PriceAlert.coin_name).distinct().all()
+        all_coins = set([row[0] for row in held_coins] + [row[0] for row in alert_coins])
+        coin_names = list(all_coins)
 
-        coin_names = [row[0] for row in coins]
-
-        # Possibly no holdings exist
+        # Possibly no holdings or alerts exist
         if not coin_names:
             return
 
@@ -34,6 +37,26 @@ async def refresh_prices():
 
         for coin, price in prices.items():
             await async_redis.set(f"coingecko:price:{coin}", price, ex=180)
+
+        # Check alerts against current prices
+        alerts = db.query(PriceAlert).all()
+        for alert in alerts:
+            if alert.coin_name not in prices:
+                continue  # No price available for this coin, skip
+
+            current_price = Decimal(str(prices[alert.coin_name]))
+            trigger_alert = False
+
+            if alert.direction == "above" and current_price >= alert.target_price:
+                trigger_alert = True
+            elif alert.direction == "below" and current_price <= alert.target_price:
+                trigger_alert = True
+
+            if trigger_alert:
+                # TODO: WEBSOCKET
+                db.delete(alert)
+
+        db.commit()
 
 
 async def refresh_valid_coins_loop():
@@ -57,3 +80,41 @@ async def refresh_valid_coins():
     await async_redis.delete("coingecko:valid_coins")
     await async_redis.sadd("coingecko:valid_coins", *coin_ids)
     await async_redis.expire("coingecko:valid_coins", 86400)
+
+
+async def save_price_history_loop():
+    while True:
+        try:
+            await save_price_history()
+        except Exception as e:
+            print(f"Something went wrong snapshotting prices: {e}")
+
+        # Runs every 2 hours
+        await asyncio.sleep(7200)
+
+
+async def save_price_history():
+    with SessionLocal() as db:
+        # Get current prices for all coins whether held or alert
+        held_coins = db.query(Holding.coin_name).distinct().all()
+        alert_coins = db.query(PriceAlert.coin_name).distinct().all()
+        all_coins = set([row[0] for row in held_coins] + [row[0] for row in alert_coins])
+
+        # Save price history for each coin
+        now = datetime.now(timezone.utc)
+        for coin in all_coins:
+            price = await async_redis.get(f"coingecko:price:{coin}")
+            if price is None:
+                continue
+
+            price_history = PriceHistory(
+                coin_name=coin,
+                price=Decimal(str(price)),
+                timestamp=now
+            )
+            db.add(price_history)
+
+        # Delete price history older than 120 days
+        cutoff = now - timedelta(days=120)
+        db.query(PriceHistory).filter(PriceHistory.timestamp < cutoff).delete()
+        db.commit()

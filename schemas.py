@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Literal
+from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -78,6 +79,12 @@ class PriceAlertCreate(BaseModel):
     direction: Literal["above", "below"]
 
 
+# Price Alert Update
+class PriceAlertUpdate(BaseModel):
+    target_price: Decimal = Field(gt=0, max_digits=20, decimal_places=8)
+    direction: Literal["above", "below"]
+
+
 # Price Alert Object Response
 class PriceAlertResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -87,3 +94,13 @@ class PriceAlertResponse(BaseModel):
     target_price: Decimal
     direction: str
     user_id: int
+
+
+# Price History Response
+class PriceHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    coin_name: str
+    price: Decimal
+    timestamp: datetime

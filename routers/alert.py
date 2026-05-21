@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, PriceAlert
-from schemas import PriceAlertCreate, PriceAlertResponse
+from schemas import PriceAlertCreate, PriceAlertUpdate, PriceAlertResponse
 from security import get_current_user
-from services import validate_coin
+from services import validate_coin, cache_price
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -39,6 +39,9 @@ def create_alert(alert: PriceAlertCreate, current_user: User = Depends(get_curre
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="User has the maximum alerts per coin (10)")
 
+    # Cache price if missing (handles new coins yet to run in background task)
+    cache_price(alert.coin_name)
+
     new_alert = PriceAlert(
         coin_name=alert.coin_name,
         target_price=alert.target_price,
@@ -52,19 +55,13 @@ def create_alert(alert: PriceAlertCreate, current_user: User = Depends(get_curre
 
 
 @router.put("/{alert_id}", response_model=PriceAlertResponse)
-def update_alert(alert_id: int, new_alert: PriceAlertCreate, current_user: User = Depends(get_current_user),
+def update_alert(alert_id: int, new_alert: PriceAlertUpdate, current_user: User = Depends(get_current_user),
                  db: Session = Depends(get_db)):
     alert = db.query(PriceAlert).filter(PriceAlert.id == alert_id,
                                         PriceAlert.user_id == current_user.id).first()
     if not alert:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
 
-    # Validate the new coin if it changed
-    if new_alert.coin_name != alert.coin_name:
-        if not validate_coin(new_alert.coin_name):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid coin")
-
-    alert.coin_name = new_alert.coin_name
     alert.target_price = new_alert.target_price
     alert.direction = new_alert.direction
     db.commit()
