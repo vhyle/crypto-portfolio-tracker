@@ -19,7 +19,7 @@ class Portfolio(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(40))
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
     # Reject if user has duplicate portfolio name
     __table_args__ = (
@@ -34,7 +34,7 @@ class Holding(Base):
     coin_name: Mapped[str] = mapped_column(String(60), index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=8))
     buy_price: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=8))
-    portfolio_id: Mapped[int] = mapped_column(ForeignKey("portfolios.id"))
+    portfolio_id: Mapped[int] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
 
     # Reject duplicate coins in the same portfolio
     __table_args__ = (
@@ -42,10 +42,13 @@ class Holding(Base):
     )
 
 
-# TODO: Complete Price Alert Notification // Notify When Certain Price
-# class PriceAlert(Base):
-#    __tablename__ = "price_alerts"
-#    pass
+class PriceAlert(Base):
+    __tablename__ = "price_alerts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    coin_name: Mapped[str] = mapped_column(String(60), index=True)
+    target_price: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=8))
+    direction: Mapped[str] = mapped_column(String(10))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
 
 # TODO: Show Price History Over ? Figure Out Duration

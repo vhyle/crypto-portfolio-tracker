@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from models import User, Portfolio, Holding  # PriceAlert, PriceHistory
+from models import User, Portfolio, Holding, PriceAlert #PriceHistory
 from database import engine, Base
-from routers import auth, portfolio, holding
+from routers import auth, portfolio, holding, alert
 from background import refresh_prices_loop, refresh_valid_coins_loop
 
 # Drop tables
@@ -34,3 +34,4 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(portfolio.router)
 app.include_router(holding.router)
+app.include_router(alert.router)

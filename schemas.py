@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -49,10 +50,12 @@ class HoldingCreate(BaseModel):
     amount: Decimal = Field(gt=0, max_digits=20, decimal_places=8)
     buy_price: Decimal = Field(gt=0, max_digits=20, decimal_places=8)
 
+
 # Crypto Holding Update
 class HoldingUpdate(BaseModel):
     amount: Decimal = Field(gt=0, max_digits=20, decimal_places=8)
     buy_price: Decimal = Field(gt=0, max_digits=20, decimal_places=8)
+
 
 # Crypto Holding Object Response
 class HoldingResponse(BaseModel):
@@ -66,3 +69,21 @@ class HoldingResponse(BaseModel):
     current_price: Decimal
     current_value: Decimal
     profit_loss_percent: Decimal
+
+
+# Price Alert Notification Creation
+class PriceAlertCreate(BaseModel):
+    coin_name: str = Field(min_length=2, max_length=60, pattern=r"^[a-z0-9-]+$")
+    target_price: Decimal = Field(gt=0, max_digits=20, decimal_places=8)
+    direction: Literal["above", "below"]
+
+
+# Price Alert Object Response
+class PriceAlertResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    coin_name: str
+    target_price: Decimal
+    direction: str
+    user_id: int
