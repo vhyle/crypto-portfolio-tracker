@@ -5,6 +5,7 @@ from decimal import Decimal
 import httpx
 
 from cache import async_redis
+from connection_manager import manager
 from database import SessionLocal
 from models import Holding, PriceAlert, PriceHistory
 from services import fetch_prices_batch
@@ -53,8 +54,21 @@ async def refresh_prices():
                 trigger_alert = True
 
             if trigger_alert:
-                # TODO: WEBSOCKET
+                # Alert connected user that their price goal has been reached
+                await manager.send_to_user(alert.user_id, {
+                    "type": "triggered_alert",
+                    "coin_name": alert.coin_name,
+                    "target_price": str(alert.target_price),
+                    "current_price": str(current_price),
+                    "direction": alert.direction
+                })
                 db.delete(alert)
+
+        # Broadcast price update to all connected users
+        await manager.broadcast({
+            "type": "price_update",
+            "prices": {coin: str(price) for coin, price in prices.items()}
+        })
 
         db.commit()
 
@@ -87,7 +101,7 @@ async def save_price_history_loop():
         try:
             await save_price_history()
         except Exception as e:
-            print(f"Something went wrong snapshotting prices: {e}")
+            print(f"Something went wrong capturing prices: {e}")
 
         # Runs every 2 hours
         await asyncio.sleep(7200)

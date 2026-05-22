@@ -5,7 +5,7 @@ import bcrypt
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError, ExpiredSignatureError
+from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -40,8 +40,8 @@ def get_current_user(auth: HTTPAuthorizationCredentials = Depends(security),
                      db: Session = Depends(get_db)) -> User:
     token = auth.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-    except (JWTError, ExpiredSignatureError):
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
     user_id = payload.get("sub")
     user = db.query(User).filter(User.id == int(user_id)).first()

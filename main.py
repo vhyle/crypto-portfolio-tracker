@@ -9,7 +9,7 @@ from models import User, Portfolio, Holding, PriceAlert, PriceHistory
 from background import refresh_prices_loop, refresh_valid_coins_loop, save_price_history_loop
 from database import engine, Base
 from rate_limit import limiter
-from routers import auth, portfolio, holding, alert, history
+from routers import auth, portfolio, holding, alert, history, websocket
 
 # Drop tables
 # Base.metadata.drop_all(bind=engine)
@@ -44,3 +44,4 @@ app.include_router(portfolio.router)
 app.include_router(holding.router)
 app.include_router(alert.router)
 app.include_router(history.router)
+app.include_router(websocket.router)
